@@ -13,6 +13,7 @@ READONLY_HOME_DIRS=(
 READONLY_HOME_FILES=(
   ".bash_aliases"
   ".bashrc"
+  ".condarc"
 )
 
 # --- WORKSPACE LOGIC ---
