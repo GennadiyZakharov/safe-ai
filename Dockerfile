@@ -5,7 +5,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash ca-certificates coreutils findutils procps socat \
-    build-essential python3-pip python3-venv ripgrep fd-find git \
+    build-essential python3-pip python3-venv ripgrep fd-find git  \
+    rsync \
     && rm -rf /var/lib/apt/lists/*
 
 # Create the user to match your host user name
