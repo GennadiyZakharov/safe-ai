@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create the user to match your host user name
 # We don't need to fix permissions here; Podman maps it at runtime.
-RUN useradd -m -s /bin/bash gena
+RUN groupmod -n gena ubuntu && usermod -l gena -d /home/gena -m ubuntu && usermod -s /bin/bash gena
 USER gena
 WORKDIR /home/gena/programming
 

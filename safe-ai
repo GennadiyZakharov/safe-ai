@@ -61,13 +61,13 @@ done
 echo "🤖 Starting AI Sandbox for $USER..."
 
 podman run --rm -it \
-  --name codex-safe \
+  --name safe-ai \
+  --hostname safe-ai \
   --security-opt no-new-privileges \
   "${PODMAN_ARGS[@]}" \
   -w "$CONTAINER_WORKDIR" \
   -e HOME="$CONTAINER_USER_HOME" \
   -e CODEX_HOME="$CONTAINER_USER_HOME/.codex" \
   -e ENABLE_LOCAL_LLM_PROXY=1 \
+  --userns=keep-id \
   safe-ai
-
-  #--users=keep-id \
