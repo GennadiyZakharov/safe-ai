@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- CONFIGURATION: PROTECT YOUR DATA ---
+# These folders will be visible to the AI but it CANNOT change them.
+READONLY_HOME_DIRS=(
+  ".local/bin"
+  "apps"
+  ".oh-my-bash"
+  ".cargo"
+)
+
+READONLY_HOME_FILES=(
+  ".bash_aliases"
+  ".bashrc"
+)
+
+# --- WORKSPACE LOGIC ---
+# Ensures the AI only works within your specified programming directory.
+PROGRAMMING_DIR="$HOME/programming"
+PROGRAMMING_REAL="$(realpath "$PROGRAMMING_DIR")"
+PWD_REAL="$(realpath "$(pwd)")"
+
+# Security check: Don't start the AI if you aren't in your dev folder.
+if [[ "$PWD_REAL" != "$PROGRAMMING_REAL"* ]]; then
+  echo "❌ Error: Current directory is outside $PROGRAMMING_DIR" >&2
+  exit 1
+fi
+
+# Calculate the path inside the container
+REL_PATH="${PWD_REAL#$PROGRAMMING_REAL}"
+CONTAINER_USER_HOME="/home/$USER"
+CONTAINER_WORKDIR="$CONTAINER_USER_HOME/programming${REL_PATH}"
+
+# --- PERSISTENT AI CONFIG ---
+# This is where Codex saves its own settings (Read-Write).
+CODEX_CONFIG_HOST="$HOME/.codex-docker"
+mkdir -p "$CODEX_CONFIG_HOST"
+
+# --- PODMAN MOUNT LOGIC ---
+# We use :Z for SELinux compatibility and :ro for safety.
+PODMAN_ARGS=()
+
+# 1. Main Workspace (Read-Write)
+PODMAN_ARGS+=("-v" "$PROGRAMMING_REAL:$CONTAINER_USER_HOME/programming:rw,Z")
+
+# 2. AI Tool Config (Read-Write)
+PODMAN_ARGS+=("-v" "$CODEX_CONFIG_HOST:$CONTAINER_USER_HOME/.codex:rw,Z")
+
+# 3. Mount RO Directories
+for rel in "${READONLY_HOME_DIRS[@]}"; do
+  [[ -d "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:ro,Z")
+done
+
+# 4. Mount RO Files
+for rel in "${READONLY_HOME_FILES[@]}"; do
+  [[ -f "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:ro,Z")
+done
+
+# --- RUN THE SANDBOX ---
+echo "🤖 Starting AI Sandbox for $USER..."
+
+podman run --rm -it \
+  --name codex-safe \
+  --security-opt no-new-privileges \
+  "${PODMAN_ARGS[@]}" \
+  -w "$CONTAINER_WORKDIR" \
+  -e HOME="$CONTAINER_USER_HOME" \
+  -e CODEX_HOME="$CONTAINER_USER_HOME/.codex" \
+  -e ENABLE_LOCAL_LLM_PROXY=1 \
+  safe-ai
+
+  #--users=keep-id \
