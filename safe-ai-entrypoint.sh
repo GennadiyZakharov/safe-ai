@@ -4,8 +4,8 @@ set -euo pipefail
 # In Podman, host.containers.internal is the standard way to reach the host.
 # This avoids issues if your network bridge IP changes.
 TARGET_HOST="${LOCAL_LLM_PROXY_TARGET_HOST:-host.containers.internal}"
-TARGET_PORT="${LOCAL_LLM_PROXY_TARGET_PORT:-8000}"
-LISTEN_PORT="${LOCAL_LLM_PROXY_LISTEN_PORT:-8000}"
+TARGET_PORT="${LOCAL_LLM_PROXY_TARGET_PORT:-8100}"
+LISTEN_PORT="${LOCAL_LLM_PROXY_LISTEN_PORT:-8100}"
 
 if [[ "${ENABLE_LOCAL_LLM_PROXY:-1}" == "1" ]]; then
   echo "🔗 Mapping container 127.0.0.1:$LISTEN_PORT -> host $TARGET_HOST:$TARGET_PORT"
