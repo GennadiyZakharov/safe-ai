@@ -23,15 +23,46 @@ PROGRAMMING_REAL="$(realpath "$PROGRAMMING_DIR")"
 PWD_REAL="$(realpath "$(pwd)")"
 
 # Security check: Don't start the AI if you aren't in your dev folder.
-if [[ "$PWD_REAL" != "$PROGRAMMING_REAL"* ]]; then
-  echo "❌ Error: Current directory is outside $PROGRAMMING_DIR" >&2
-  exit 1
-fi
+case "$PWD_REAL" in
+  "$PROGRAMMING_REAL"|"$PROGRAMMING_REAL"/*) ;;
+  *)
+    echo "❌ Error: Current directory is outside $PROGRAMMING_DIR" >&2
+    exit 1
+    ;;
+esac
+
+MOUNT_SCOPE="${SAFE_AI_MOUNT_SCOPE:-repo}"
+case "$MOUNT_SCOPE" in
+  repo)
+    if GIT_ROOT="$(git -C "$PWD_REAL" rev-parse --show-toplevel 2>/dev/null)"; then
+      MOUNT_REAL="$(realpath "$GIT_ROOT")"
+    else
+      MOUNT_REAL="$PWD_REAL"
+    fi
+    ;;
+  programming)
+    MOUNT_REAL="$PROGRAMMING_REAL"
+    ;;
+  *)
+    echo "❌ Error: SAFE_AI_MOUNT_SCOPE must be 'repo' or 'programming'" >&2
+    exit 1
+    ;;
+esac
+
+case "$MOUNT_REAL" in
+  "$PROGRAMMING_REAL"|"$PROGRAMMING_REAL"/*) ;;
+  *)
+    echo "❌ Error: Writable mount is outside $PROGRAMMING_DIR" >&2
+    exit 1
+    ;;
+esac
 
 # Calculate the path inside the container
-REL_PATH="${PWD_REAL#$PROGRAMMING_REAL}"
+MOUNT_REL_PATH="${MOUNT_REAL#$PROGRAMMING_REAL}"
+WORKDIR_REL_PATH="${PWD_REAL#$MOUNT_REAL}"
 CONTAINER_USER_HOME="/home/$USER"
-CONTAINER_WORKDIR="$CONTAINER_USER_HOME/programming${REL_PATH}"
+CONTAINER_MOUNT_POINT="$CONTAINER_USER_HOME/programming${MOUNT_REL_PATH}"
+CONTAINER_WORKDIR="$CONTAINER_MOUNT_POINT${WORKDIR_REL_PATH}"
 
 # --- PERSISTENT AI CONFIG ---
 # This is where Codex saves its own settings (Read-Write).
@@ -43,7 +74,7 @@ mkdir -p "$CODEX_CONFIG_HOST"
 PODMAN_ARGS=()
 
 # 1. Main Workspace (Read-Write)
-PODMAN_ARGS+=("-v" "$PROGRAMMING_REAL:$CONTAINER_USER_HOME/programming:rw,Z")
+PODMAN_ARGS+=("-v" "$MOUNT_REAL:$CONTAINER_MOUNT_POINT:rw,Z")
 
 # 2. AI Tool Config (Read-Write)
 PODMAN_ARGS+=("-v" "$CODEX_CONFIG_HOST:$CONTAINER_USER_HOME/.codex:rw,Z")
@@ -60,6 +91,7 @@ done
 
 # --- RUN THE SANDBOX ---
 echo "🤖 Starting AI Sandbox for $USER..."
+echo "📁 Writable mount: $MOUNT_REAL -> $CONTAINER_MOUNT_POINT"
 
 podman run --rm -it \
   --name safe-ai \
