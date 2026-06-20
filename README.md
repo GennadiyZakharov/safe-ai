@@ -90,9 +90,9 @@ SAFE_AI_MOUNT_SCOPE=programming ./path/to/safe-ai
 Edit the arrays in `safe-ai` to change which host home paths are exposed
 read-only.
 
-Read-only home mounts are mounted without SELinux relabeling by default. If your
-host requires relabeling for those mounts, set `SAFE_AI_READONLY_LABEL` to `z`
-or `Z`.
+Read-only home mounts use Podman's shared SELinux relabeling option `z` by
+default. This is harmless on hosts without SELinux, such as typical Ubuntu
+installations using AppArmor.
 
 ## Local LLM Proxy
 

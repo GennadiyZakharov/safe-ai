@@ -71,17 +71,8 @@ mkdir -p "$CODEX_CONFIG_HOST"
 
 # --- PODMAN MOUNT LOGIC ---
 # Writable mounts use :Z for SELinux compatibility.
-# Read-only home mounts avoid relabeling by default;
-# set SAFE_AI_READONLY_LABEL to z or Z if your host needs it.
+# Read-only home mounts use :z so shared read-only paths work on SELinux hosts.
 PODMAN_ARGS=()
-READONLY_LABEL="${SAFE_AI_READONLY_LABEL:-}"
-case "$READONLY_LABEL" in
-  ""|"z"|"Z") ;;
-  *)
-    echo "❌ Error: SAFE_AI_READONLY_LABEL must be empty, 'z', or 'Z'" >&2
-    exit 1
-    ;;
-esac
 
 # 1. Main Workspace (Read-Write)
 PODMAN_ARGS+=("-v" "$MOUNT_REAL:$CONTAINER_MOUNT_POINT:rw,Z")
@@ -91,15 +82,13 @@ PODMAN_ARGS+=("-v" "$CODEX_CONFIG_HOST:$CONTAINER_USER_HOME/.codex:rw,Z")
 
 # 3. Mount RO Directories
 for rel in "${READONLY_HOME_DIRS[@]}"; do
-  volume_opts="ro"
-  [[ -n "$READONLY_LABEL" ]] && volume_opts="$volume_opts,$READONLY_LABEL"
+  volume_opts="ro,z"
   [[ -d "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:$volume_opts")
 done
 
 # 4. Mount RO Files
 for rel in "${READONLY_HOME_FILES[@]}"; do
-  volume_opts="ro"
-  [[ -n "$READONLY_LABEL" ]] && volume_opts="$volume_opts,$READONLY_LABEL"
+  volume_opts="ro,z"
   [[ -f "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:$volume_opts")
 done
 
