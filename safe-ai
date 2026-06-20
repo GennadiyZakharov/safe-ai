@@ -70,8 +70,18 @@ CODEX_CONFIG_HOST="$HOME/.codex-docker"
 mkdir -p "$CODEX_CONFIG_HOST"
 
 # --- PODMAN MOUNT LOGIC ---
-# We use :Z for SELinux compatibility and :ro for safety.
+# Writable mounts use :Z for SELinux compatibility.
+# Read-only home mounts avoid relabeling by default;
+# set SAFE_AI_READONLY_LABEL to z or Z if your host needs it.
 PODMAN_ARGS=()
+READONLY_LABEL="${SAFE_AI_READONLY_LABEL:-}"
+case "$READONLY_LABEL" in
+  ""|"z"|"Z") ;;
+  *)
+    echo "❌ Error: SAFE_AI_READONLY_LABEL must be empty, 'z', or 'Z'" >&2
+    exit 1
+    ;;
+esac
 
 # 1. Main Workspace (Read-Write)
 PODMAN_ARGS+=("-v" "$MOUNT_REAL:$CONTAINER_MOUNT_POINT:rw,Z")
@@ -81,12 +91,24 @@ PODMAN_ARGS+=("-v" "$CODEX_CONFIG_HOST:$CONTAINER_USER_HOME/.codex:rw,Z")
 
 # 3. Mount RO Directories
 for rel in "${READONLY_HOME_DIRS[@]}"; do
-  [[ -d "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:ro,Z")
+  volume_opts="ro"
+  [[ -n "$READONLY_LABEL" ]] && volume_opts="$volume_opts,$READONLY_LABEL"
+  [[ -d "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:$volume_opts")
 done
 
 # 4. Mount RO Files
 for rel in "${READONLY_HOME_FILES[@]}"; do
-  [[ -f "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:ro,Z")
+  volume_opts="ro"
+  [[ -n "$READONLY_LABEL" ]] && volume_opts="$volume_opts,$READONLY_LABEL"
+  [[ -f "$HOME/$rel" ]] && PODMAN_ARGS+=("-v" "$HOME/$rel:$CONTAINER_USER_HOME/$rel:$volume_opts")
+done
+
+# 5. Optional Local LLM proxy settings
+PODMAN_ARGS+=("-e" "ENABLE_LOCAL_LLM_PROXY=${ENABLE_LOCAL_LLM_PROXY:-1}")
+for env_name in LOCAL_LLM_PROXY_TARGET_HOST LOCAL_LLM_PROXY_TARGET_PORT LOCAL_LLM_PROXY_LISTEN_PORT; do
+  if [[ -v "$env_name" ]]; then
+    PODMAN_ARGS+=("-e" "$env_name=${!env_name}")
+  fi
 done
 
 # --- RUN THE SANDBOX ---
@@ -101,6 +123,5 @@ podman run --rm -it \
   -w "$CONTAINER_WORKDIR" \
   -e HOME="$CONTAINER_USER_HOME" \
   -e CODEX_HOME="$CONTAINER_USER_HOME/.codex" \
-  -e ENABLE_LOCAL_LLM_PROXY=1 \
   --userns=keep-id \
   safe-ai

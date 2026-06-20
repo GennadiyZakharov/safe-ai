@@ -33,9 +33,8 @@ stores the AI tool configuration in a separate persistent directory.
 - Rootless Podman support
 - A development workspace at `~/programming`
 
-This project currently contains host-specific assumptions, including the user
-name `gena` in the `Dockerfile` and entrypoint `PATH`. Update those values if
-you use this on a different account.
+The image build uses your host `$USER` as the container user name, so rebuild
+the image on each host account that will run the sandbox.
 
 ## Install Dependencies
 
@@ -57,6 +56,9 @@ The script installs:
 ```
 
 This builds the local image `safe-ai`
+
+The build script passes `--build-arg USER_NAME="$USER"` so the container user
+matches your host user name.
 
 ## Run The Sandbox
 
@@ -87,6 +89,10 @@ SAFE_AI_MOUNT_SCOPE=programming ./path/to/safe-ai
 
 Edit the arrays in `safe-ai` to change which host home paths are exposed
 read-only.
+
+Read-only home mounts are mounted without SELinux relabeling by default. If your
+host requires relabeling for those mounts, set `SAFE_AI_READONLY_LABEL` to `z`
+or `Z`.
 
 ## Local LLM Proxy
 

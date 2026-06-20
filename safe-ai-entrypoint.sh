@@ -17,7 +17,7 @@ if [[ "${ENABLE_LOCAL_LLM_PROXY:-1}" == "1" ]]; then
   export LOCAL_LLM_OPENAI_BASE_URL="http://127.0.0.1:${LISTEN_PORT}/v1"
 fi
 
-export PATH=$PATH:/home/gena/.local/bin
+export PATH="$PATH:$HOME/.local/bin"
 echo "✅ Environment ready. Path: $PATH"
 
 # Execute whatever command was passed, or fall back to bash
