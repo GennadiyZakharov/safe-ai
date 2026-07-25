@@ -12,6 +12,18 @@ if [[ "${ENABLE_LOCAL_LLM_PROXY:-1}" == "1" ]]; then
 
   # The socat bridge remains the most compatible way for tools expecting 'localhost'
   socat "TCP-LISTEN:${LISTEN_PORT},bind=127.0.0.1,fork,reuseaddr" "TCP:${TARGET_HOST}:${TARGET_PORT}" &
+  SOCAT_PID=$!
+
+  cleanup_proxy() {
+    kill "$SOCAT_PID" 2>/dev/null || true
+  }
+  trap cleanup_proxy EXIT
+
+  sleep 0.1
+  if ! kill -0 "$SOCAT_PID" 2>/dev/null; then
+    echo "❌ Error: Failed to start local LLM proxy on 127.0.0.1:$LISTEN_PORT" >&2
+    exit 1
+  fi
 
   export LOCAL_LLM_BASE_URL="http://127.0.0.1:${LISTEN_PORT}"
   export LOCAL_LLM_OPENAI_BASE_URL="http://127.0.0.1:${LISTEN_PORT}/v1"

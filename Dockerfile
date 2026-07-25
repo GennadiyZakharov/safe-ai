@@ -2,7 +2,7 @@ FROM ubuntu:26.04
 
 # Avoid prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
-# Overrided by argument passed by the build script
+# Overridden by argument passed by the build script
 ARG USER_NAME=ubuntu
 
 RUN apt-get update \
@@ -10,6 +10,7 @@ RUN apt-get update \
     bash ca-certificates coreutils findutils procps socat \
     build-essential python3-pip python3-venv ripgrep fd-find git \
     rsync \
+    && ln -s /usr/bin/fdfind /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/*
 
 # Create the user to match your host user name

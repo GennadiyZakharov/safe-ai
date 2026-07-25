@@ -19,6 +19,12 @@ READONLY_HOME_FILES=(
 # --- WORKSPACE LOGIC ---
 # Ensures the AI only works within your specified programming directory.
 PROGRAMMING_DIR="$HOME/programming"
+
+if [[ ! -d "$PROGRAMMING_DIR" ]]; then
+  echo "❌ Error: Programming directory does not exist: $PROGRAMMING_DIR" >&2
+  exit 1
+fi
+
 PROGRAMMING_REAL="$(realpath "$PROGRAMMING_DIR")"
 PWD_REAL="$(realpath "$(pwd)")"
 
